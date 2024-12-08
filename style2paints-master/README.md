@@ -11,7 +11,7 @@ You will need CUDA 10.0, CuDNN 7, Python 3.6
     pip install bottle==0.12.10
     pip install tqdm
 
-Then download the software "style2paints45beta1214B.zip", put the model files like
+Then download the software "style2paints45beta1214B.zip"(https://drive.google.com/open?id=1gmg2wwNIp4qMzxqP12SbcmVAHsLt1iRE), put the model files like
 
     s2p_v45_server/nets/inception.net
     s2p_v45_server/nets/gau.npy
