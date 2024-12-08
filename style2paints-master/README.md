@@ -6,9 +6,9 @@ This is the source code of the Style2Paints V4.5. In this forlder, the codes imp
 
 You will need CUDA 10.0, CuDNN 7, Python 3.6
 
-    pip install opencv-contrib-python==4.1.0.25
-    pip install tensorflow_gpu==1.14.0
-    pip install bottle==0.12.10
+    pip install opencv-contrib-python
+    pip install tensorflow
+    pip install bottle
     pip install tqdm
 
 Then download the software "style2paints45beta1214B.zip"(https://drive.google.com/open?id=1gmg2wwNIp4qMzxqP12SbcmVAHsLt1iRE), put the model files like
