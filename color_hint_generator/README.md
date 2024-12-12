@@ -1,18 +1,15 @@
-# Project Name
+# Color Hint Generator
 
-A paragraph containing a high-level description of the project, main features and remarks.
+We developed a color hint generator that selects a single pixel's color from each segment of a segmented colored sketch. Using these selected colors, it generates a color hint image to guide further processing or visualization.
 
 ## Requirements
 
-Here you should give a general idea of what a user will need in order to use your library or application. List requirements and then link to another resource with detailed installation or setup instructions.
+python3
 
-- Requirement one
-- Another requirement
-
-Check the [installation notes]() for more details on how to install the project.
+python library:
+    numpy
+    cv2
 
 ## Usage
 
-Include here a few examples of commands you can run and what they do. Finally link out to a resource to learn more (next paragraph).
-
-For more details, check the [getting started guide]().
+Put the generated draft into the post1 or post2 folder, then put its segmented image into the according segment1 or segment2 folder, then run the generator code, the corresponding color hint image will be generate in the color_hint1 or color_hint2 folder.
