@@ -1,8 +1,0 @@
-PPT中需要出現的內容
-Introduction: 我們想解決什麼問題？
-Related work：我們找的相關論文的說明
-Dataset/Platform：我們dataset怎麼找的？有什麼特徵？
-Baseline：我那篇論文的說明和implement
-MainApproach：新增了什麼內容？輸入、輸出、有什麼var、因素、其中的流程細項是什麼？要很清楚的說明
-Evaluation Metric：我們用了什麼metric？為什麼這樣使用？
-Results&Analysis：模型效果？解釋一些發現的效果？
