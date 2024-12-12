@@ -42,26 +42,26 @@
 輸入：
 Input Image（可為黑白或彩色）
 
-```shell
+```python
 folder_path = './append/Dataset'
 ```
 
 Color Hint Image（要與對應的圖片檔名相同，且為 png 檔）
 
-```shell
+```python
 color_hint_image_points = extract_color_blocks('./append/ColorHint/color_hint' + file_name + '.png')
 ```
 
 輸出：
 Rough Color Image（我們所要的上色結果）
 
-```shell
+```python
 cv2_imwrite('./append/Result/' + file_name + '.jpg', blended_smoothed_careless)
 ```
 
 Sketch Image（因 inkn'hue 對於圖片大小有強烈限制，因此可用於 inkn'hue）
 
-```shell
+```python
 cv2_imwrite('./append/Sketch/' + file_name + '.jpg', sketch)
 ```
 
@@ -105,14 +105,14 @@ python app.py
 
 皆位於 app.py 中，將回傳值改為註解掉的內容即可恢復正常功能。
 
-```shell
+```python
 def generate(sketch: Image.Image, s2p: Image.Image):
     ...
     # return gr.Image(result, interactive=True)
     return result
 ```
 
-```shell
+```python
 def postprocess(gen: Image.Image, s2p: Image.Image, cratio):
     ...
     # return [ret, ret]
@@ -126,20 +126,20 @@ def postprocess(gen: Image.Image, s2p: Image.Image, cratio):
 兩者對應的圖片檔名要相同
 Sketch Image（Style2Paints 生成結果）
 
-```shell
+```python
 folder1 = './append/Sketch'
 ```
 
 Rough Color Image（Style2Paints 生成結果）
 
-```shell
+```python
 folder2 = './append/Style2Paints'
 ```
 
 輸出：
 Color Image（我們所要的上色結果）
 
-```shell
+```python
 exp_path = os.path.join('./append/Result', file1)
 ```
 
@@ -147,6 +147,6 @@ exp_path = os.path.join('./append/Result', file1)
 CIELAB Interpolation 所需的參數 λa∗b∗，用於調整 inkn'hue 通過 VAE 生成的圖片與 Style2Paints 生成的圖片的插值比例，數值範圍 0 ~ 1，越接近 0 越接近 VAE 生成的圖片；反之，越接近 1 越接近 Style2Paints 生成的圖片。
 我們設定數值為 0.8。
 
-```shell
+```python
 exp_img = postprocess(gen, img2, 0.8)
 ```
