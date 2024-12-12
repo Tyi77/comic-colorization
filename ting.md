@@ -123,6 +123,7 @@ def postprocess(gen: Image.Image, s2p: Image.Image, cratio):
 可從 app.py 更改
 
 輸入：
+兩者對應的圖片檔名要相同
 Sketch Image（Style2Paints 生成結果）
 
 ```shell
