@@ -13,6 +13,8 @@
 * Segmentation使用的trapped ball大小參數有15, 10, 9, 8, 7, 6, 5, 4
 * 增加20%Saturation
 * Color Selection使用的方法是Kmeans，K為12
+### 修改的repo來源
+* [cGan-Based-Manga-Colorization-using-1-training-image](https://github.com/ryanliwag/cGan-Based-Manga-Colorization-using-1-training-image.git)
 
 ## Results
 * 第一組dataset其一測試圖片的原圖、灰階圖片、Baseline結果圖、Style2Paints結果圖、inkn'hue結果圖
