@@ -23,3 +23,6 @@ FID 用於衡量生成圖像的分佈與真實圖像的分佈之間的相似性�
 
 ### 參考資料
 https://wandb.ai/authors/One-Shot-3D-Photography/reports/-Frechet-Inception-Distance-FID-GANs---Vmlldzo0MzI0MjA
+
+### How to use
+把生成的圖片放在output資料夾，real放ground truth
