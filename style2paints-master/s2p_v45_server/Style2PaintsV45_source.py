@@ -529,95 +529,77 @@ def send_static(filename):
     return static_file(filename, root='game/')
 
 
-@route('/upload_sketch', method='POST')
-def upload_sketch():
-    origin = from_png_to_jpg(get_request_image('sketch'))
-    ID = datetime.datetime.now().strftime('H%HM%MS%S')
-    print('New room ID: ' + ID)
-    room_path = './game/rooms/' + ID + '/'
-    os.makedirs(room_path, exist_ok=True)
-    cv2_imwrite(room_path + 'origin.png', origin)
-    sketch = min_resize(origin, 512)
-    sketch = np.min(sketch, axis=2)
-    sketch = cli_norm(sketch)
-    sketch = np.tile(sketch[:, :, None], [1, 1, 3])
-    sketch = go_tail(sketch)
-    sketch = np.mean(sketch, axis=2)
-    cv2_imwrite(room_path + 'sketch.png', sketch)
-    return ID + '_' + ID
-
-
-def extract_color_blocks(folder_path, background_threshold=0.5):
+def extract_color_blocks(file_path, background_threshold=0.5):
     # 記錄結果的色塊資訊
     result = []
-    for file_name in os.listdir(folder_path):
-        file_path = os.path.join(folder_path, file_name)
-        if not file_path.lower().endswith(('.png', '.bmp')):
-            continue
-        img = cv2.imread(file_path)
-        if img is None:
-            print(f"Failed to load image: {file_path}")
-            continue
+    # for file_name in os.listdir(folder_path):
+    #     file_path = os.path.join(folder_path, file_name)
+    #     if not file_path.lower().endswith(('.png', '.bmp')):
+    #         continue
+    img = cv2.imread(file_path)
+    if img is None:
+        print(f"Failed to load image: {file_path}")
+        return
 
-        # 讀取圖片並轉換為 numpy 數組
-        img_array = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-        
-        # 獲取圖片的高、寬
-        height, width, _ = img_array.shape
-        
-        # 計算每種顏色的出現比例
-        unique_colors, counts = np.unique(img_array.reshape(-1, 3), axis=0, return_counts=True)
-        total_pixels = height * width
-        background_colors = unique_colors[counts / total_pixels > background_threshold]
+    # 讀取圖片並轉換為 numpy 數組
+    img_array = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+    
+    # 獲取圖片的高、寬
+    height, width, _ = img_array.shape
+    
+    # 計算每種顏色的出現比例
+    unique_colors, counts = np.unique(img_array.reshape(-1, 3), axis=0, return_counts=True)
+    total_pixels = height * width
+    background_colors = unique_colors[counts / total_pixels > background_threshold]
 
-        # 初始化一個布爾陣列，記錄哪些像素已經處理過
-        visited = np.zeros((height, width), dtype=bool)
+    # 初始化一個布爾陣列，記錄哪些像素已經處理過
+    visited = np.zeros((height, width), dtype=bool)
 
-        # 遍歷每個像素
-        for i in range(height):
-            for j in range(width):
-                if visited[i, j]:
-                    continue  # 如果已處理，跳過
+    # 遍歷每個像素
+    for i in range(height):
+        for j in range(width):
+            if visited[i, j]:
+                continue  # 如果已處理，跳過
+            
+            # 當前像素的 RGB 值
+            current_color = tuple(img_array[i, j])
+            
+            # 忽略背景色塊
+            if any(np.array_equal(current_color, color) for color in background_colors):
+                visited[i, j] = True
+                continue
+            
+            # 創建與該顏色匹配的掩碼
+            mask = (img_array[:, :, 0] == current_color[0]) & \
+                (img_array[:, :, 1] == current_color[1]) & \
+                (img_array[:, :, 2] == current_color[2]) & \
+                ~visited
+            
+            # 使用 8 連通性標記連接區域
+            labeled_array, num_features = label(mask)
+            if num_features == 0:
+                continue
+            
+            # 找到該顏色的所有連通區域
+            for region_label in range(1, num_features + 1):
+                # 當前區域的掩碼
+                region_mask = labeled_array == region_label
+                visited[region_mask] = True
                 
-                # 當前像素的 RGB 值
-                current_color = tuple(img_array[i, j])
+                # 提取該區域的像素坐標
+                coords = np.argwhere(region_mask)
                 
-                # 忽略背景色塊
-                if any(np.array_equal(current_color, color) for color in background_colors):
-                    visited[i, j] = True
-                    continue
+                # 計算區域的中心點
+                center_y, center_x = np.mean(coords, axis=0)
                 
-                # 創建與該顏色匹配的掩碼
-                mask = (img_array[:, :, 0] == current_color[0]) & \
-                    (img_array[:, :, 1] == current_color[1]) & \
-                    (img_array[:, :, 2] == current_color[2]) & \
-                    ~visited
+                # 正規化到 0-1 的範圍
+                normalized_x = center_x / width
+                normalized_y = 1 - (center_y / height)  # 座標系以左下角為原點
                 
-                # 使用 8 連通性標記連接區域
-                labeled_array, num_features = label(mask)
-                if num_features == 0:
-                    continue
-                
-                # 找到該顏色的所有連通區域
-                for region_label in range(1, num_features + 1):
-                    # 當前區域的掩碼
-                    region_mask = labeled_array == region_label
-                    visited[region_mask] = True
-                    
-                    # 提取該區域的像素坐標
-                    coords = np.argwhere(region_mask)
-                    
-                    # 計算區域的中心點
-                    center_y, center_x = np.mean(coords, axis=0)
-                    
-                    # 正規化到 0-1 的範圍
-                    normalized_x = center_x / width
-                    normalized_y = 1 - (center_y / height)  # 座標系以左下角為原點
-                    
-                    # 將色塊資訊加入結果
-                    r, g, b = current_color
-                    result.append(f"[{normalized_x:.17f},{normalized_y:.17f},{r},{g},{b}]")
-                    print(f"Append [{normalized_x:.17f},{normalized_y:.17f},{r},{g},{b}]")
+                # 將色塊資訊加入結果
+                r, g, b = current_color
+                result.append(f"[{normalized_x:.17f},{normalized_y:.17f},{r},{g},{b}]")
+                print(f"Append [{normalized_x:.17f},{normalized_y:.17f},{r},{g},{b}]")
     
     # 將結果整理為目標格式
     return f"[{','.join(result)}]"
@@ -653,56 +635,100 @@ def merge_color_blocks(data1, data2, distance_threshold=0.001):
     return json.dumps(list(merged_blocks.values()), separators=(',', ':'))
 
 
+@route('/upload_sketch', method='POST')
+def upload_sketch():
+    print(f"Request received at {datetime.datetime.now()} with data: {request.forms}")
+    folder_path = './append/Dataset'
+    ID = datetime.datetime.now().strftime('H%HM%MS%S')
+    print('New room ID: ' + ID)
+    room_path = './game/rooms/' + ID + '/'
+    os.makedirs(room_path, exist_ok=True)
+    for file_name in os.listdir(folder_path):
+        file_path = os.path.join(folder_path, file_name)
+        file_name, ext = os.path.splitext(file_name)
+        if not file_path.lower().endswith(('.jpg', '.png', '.bmp')):
+            continue
+        img = cv2.imread(file_path)
+        if img is None:
+            print(f"Failed to load image: {file_path}")
+            continue
+        origin = from_png_to_jpg(img)
+        cv2_imwrite(room_path + file_name + '_origin.png', origin)
+        sketch = min_resize(origin, 512)
+        sketch = np.min(sketch, axis=2)
+        sketch = cli_norm(sketch)
+        sketch = np.tile(sketch[:, :, None], [1, 1, 3])
+        sketch = go_tail(sketch)
+        sketch = np.mean(sketch, axis=2)
+        cv2_imwrite(room_path + file_name + '_sketch.png', sketch)
+        cv2_imwrite('./append/Sketch/' + file_name + '.jpg', sketch)
+    return ID + '_' + ID
+
+
 @route('/request_result', method='POST')
 def request_result():
     room = request.forms.get("room")
     room_path = './game/rooms/' + room + '/'
     ID = datetime.datetime.now().strftime('H%HM%MS%S')
-    color_hint_image_points = extract_color_blocks(".\colorHint")
-    points = request.forms.get("points")
-    points = merge_color_blocks(color_hint_image_points, points)
-    print("request_result: "+points)
-    with open(room_path + '/points.' + ID + '.txt', 'wt') as fp:
-        fp.write(points)
-    points = json.loads(points)
-    for _ in range(len(points)):
-        points[_][1] = 1 - points[_][1]
-    sketch = cv2.imread(room_path + 'sketch.png', cv2.IMREAD_UNCHANGED)
-    origin = cv2.imread(room_path + 'origin.png', cv2.IMREAD_GRAYSCALE)
-    origin = d_resize(origin, sketch.shape).astype(np.float32)
-    low_origin = cv2.GaussianBlur(origin, (0, 0), 3.0)
-    high_origin = origin - low_origin
-    low_origin = (low_origin / np.median(low_origin) * 255.0).clip(0, 255)
-    origin = (low_origin + high_origin).clip(0, 255).astype(np.uint8)
-    faceID = int(request.forms.get("faceID")) - 65535
-    print(faceID)
-    if faceID > -1:
-        print('Default reference.')
-        face = from_png_to_jpg(refs_img_g[faceID])
-    else:
-        print('Load reference.')
-        face = from_png_to_jpg(get_request_image('face'))
-    face = s_enhance(face, 2.0)
-    print('request result room = ' + str(room) + ', ID = ' + str(ID))
-    print('processing painting in ' + room_path)
-    sketch_1024 = k_resize(sketch, 64)
-    hints_1024 = opreate_normal_hint(ini_hint(sketch_1024), points, length=2)
-    careless = go_head(sketch_1024, k_resize(face, 14), hints_1024)
-    smoothed_careless, flat_careless, blended_smoothed_careless, blended_flat_careless = refine_image(careless, sketch,
-                                                                                                      origin)
-    cv2_imwrite(room_path + '/' + ID + '.smoothed_careless.png', smoothed_careless)
-    cv2_imwrite(room_path + '/' + ID + '.flat_careless.png', flat_careless)
-    cv2_imwrite(room_path + '/' + ID + '.blended_smoothed_careless.png', blended_smoothed_careless)
-    cv2_imwrite(room_path + '/' + ID + '.blended_flat_careless.png', blended_flat_careless)
-    print('Stage I finished.')
-    careful = go_render(sketch_1024, d_resize(flat_careless, sketch_1024.shape, 0.5), hints_1024)
-    smoothed_careful, flat_careful, blended_smoothed_careful, blended_flat_careful = refine_image(careful, sketch,
-                                                                                                  origin)
-    cv2_imwrite(room_path + '/' + ID + '.smoothed_careful.png', smoothed_careful)
-    cv2_imwrite(room_path + '/' + ID + '.flat_careful.png', flat_careful)
-    cv2_imwrite(room_path + '/' + ID + '.blended_smoothed_careful.png', blended_smoothed_careful)
-    cv2_imwrite(room_path + '/' + ID + '.blended_flat_careful.png', blended_flat_careful)
-    print('Stage II finished.')
+    folder_path = './append/Dataset'
+    for file_name in os.listdir(folder_path):
+        file_path = os.path.join(folder_path, file_name)
+        file_name, ext = os.path.splitext(file_name)
+        if not file_path.lower().endswith(('.jpg', '.png', '.bmp')):
+            continue
+        img = cv2.imread(file_path)
+        if img is None:
+            print(f"Failed to load image: {file_path}")
+            continue
+
+        color_hint_image_points = extract_color_blocks('./append/ColorHint/color_hint' + file_name + '.png')
+        points = request.forms.get("points")
+        points = merge_color_blocks(color_hint_image_points, points)
+        print("request_result: "+points)
+        with open(room_path + '/points.' + ID + '.txt', 'wt') as fp:
+            fp.write(points)
+        points = json.loads(points)
+        for _ in range(len(points)):
+            points[_][1] = 1 - points[_][1]
+        
+        sketch = cv2.imread(room_path + file_name + '_sketch.png', cv2.IMREAD_UNCHANGED)
+        origin = cv2.imread(room_path + file_name + '_origin.png', cv2.IMREAD_GRAYSCALE)
+        origin = d_resize(origin, sketch.shape).astype(np.float32)
+        low_origin = cv2.GaussianBlur(origin, (0, 0), 3.0)
+        high_origin = origin - low_origin
+        low_origin = (low_origin / np.median(low_origin) * 255.0).clip(0, 255)
+        origin = (low_origin + high_origin).clip(0, 255).astype(np.uint8)
+        faceID = int(request.forms.get("faceID")) - 65535
+        print(faceID)
+        if faceID > -1:
+            print('Default reference.')
+            face = from_png_to_jpg(refs_img_g[faceID])
+        else:
+            print('Load reference.')
+            face = from_png_to_jpg(get_request_image('face'))
+        face = from_png_to_jpg(cv2.imread("./append/WhiteFace.png"))
+        face = s_enhance(face, 2.0)
+        print('request result room = ' + str(room) + ', ID = ' + str(ID))
+        print('processing painting in ' + room_path)
+        sketch_1024 = k_resize(sketch, 64)
+        hints_1024 = opreate_normal_hint(ini_hint(sketch_1024), points, length=2)
+        careless = go_head(sketch_1024, k_resize(face, 14), hints_1024)
+        smoothed_careless, flat_careless, blended_smoothed_careless, blended_flat_careless = refine_image(careless, sketch,
+                                                                                                        origin)
+        cv2_imwrite(room_path + '/' + ID + '.smoothed_careless.png', smoothed_careless)
+        cv2_imwrite(room_path + '/' + ID + '.flat_careless.png', flat_careless)
+        cv2_imwrite(room_path + '/' + ID + '.blended_smoothed_careless.png', blended_smoothed_careless)
+        cv2_imwrite(room_path + '/' + ID + '.blended_flat_careless.png', blended_flat_careless)
+        print('Stage I finished.')
+        careful = go_render(sketch_1024, d_resize(flat_careless, sketch_1024.shape, 0.5), hints_1024)
+        smoothed_careful, flat_careful, blended_smoothed_careful, blended_flat_careful = refine_image(careful, sketch,
+                                                                                                    origin)
+        cv2_imwrite(room_path + '/' + ID + '.smoothed_careful.png', smoothed_careful)
+        cv2_imwrite(room_path + '/' + ID + '.flat_careful.png', flat_careful)
+        cv2_imwrite(room_path + '/' + ID + '.blended_smoothed_careful.png', blended_smoothed_careful)
+        cv2_imwrite(room_path + '/' + ID + '.blended_flat_careful.png', blended_flat_careful)
+        print('Stage II finished.')
+        cv2_imwrite('./append/Result/' + file_name + '.jpg', blended_smoothed_careless)
     return room + '_' + ID
 
 
@@ -710,4 +736,3 @@ print('Start Serving.')
 print('Open webpage http://127.0.0.1:8233/index.html to use the software.')
 
 run(host="0.0.0.0", port=8233)
-
